@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>awesome</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+    body {
+        color: #cccccc;
+        font-family: Monospace;
+        font-size: 13px;
+        text-align: center;
+        background-color: #FFFFFF;
+        margin: 0px;
+        overflow: hidden;
+    }
+    
+    #info {
+        position: absolute;
+        top: 0px;
+        width: 100%;
+        padding: 5px;
+    }
+    
+    a {
+        color: #FFFFFF;
+    }
+    </style>
+</head>
+
+<body>
+    <video autoplay="true" id="videoElement" style="display: none;"></video>
+    <canvas id="postImpressionism-canvas1" width="1920" height="1080" style="display: none;"></canvas>
+    <script>
+    //This is a script that getting us access to local webcam stream
+    var video = document.querySelector("#videoElement");
+    navigator.getUserMedia = navigator.getUserMedia ||
+        navigator.webkitGetUserMedia ||
+        navigator.mozGetUserMedia ||
+        navigator.msGetUserMedia ||
+        navigator.oGetUserMedia;
+
+    if (navigator.getUserMedia) {
+        navigator.getUserMedia({
+            video: true
+        }, handleVideo, videoError);
+    }
+
+    function handleVideo(stream) {
+        //create a pseudo url that references to local web cam
+        video.src = window.URL.createObjectURL(stream);
+    }
+
+    function videoError(e) {
+        console.log('Reeeejected!', e);
+    }
+    </script>
+    <div id="container"></div>
+    <script src="js/Three.js"></script>
+    <script src="js/detector.js"></script>
+    <script>
+    var video = document.getElementById('videoElement');
+    if (!Detector.webgl) Detector.addGetWebGLMessage();
+
+    var container;
+
+    var camera, scene, renderer;
+
+    var mesh;
+
+    var frameCount = 0;
+    var cameraSpeed = 0;
+    var meshRotationSpeed = 0;
+    var triangleSize = 20;
+    var WIDTH = window.innerWidth;
+    var HEIGHT = window.innerHeight;
+
+    var triangles = 100000;
+    var positions = new Float32Array(triangles * 3 * 3);
+    var normals = new Int16Array(triangles * 3 * 3);
+    var colors = new Uint8Array(triangles * 3 * 3);
+    var color = new THREE.Color();
+    var geometry = new THREE.BufferGeometry();
+    var indices = new Uint32Array(triangles * 3);
+    var posX = [];
+    var posY = [];
+    var posZ = [];
+
+    init();
+    animate();
+
+    function init() {
+
+        container = document.getElementById('container');
+
+        //
+
+        camera = new THREE.PerspectiveCamera(27, window.innerWidth / window.innerHeight, 1, 3500);
+        camera.position.z = 2000;
+
+        scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0xFFFFFF, 2000, 3500);
+
+        //
+
+        scene.add(new THREE.AmbientLight(0x444444));
+
+        var light1 = new THREE.DirectionalLight(0xffffff, 0.5);
+        light1.position.set(1, 1, 1);
+        scene.add(light1);
+
+        var light2 = new THREE.DirectionalLight(0xffffff, 1.5);
+        light2.position.set(0, -1, 0);
+        scene.add(light2);
+
+        var shadow1 = new THREE.DirectionalLightShadow(light1);
+
+        //
+
+        for (var i = 0; i < indices.length; i++) {
+            indices[i] = i;
+        }
+
+
+        var xn = 800,
+            xn2 = xn / 2; // triangles spread in the cube
+        yn = 450,
+            yn2 = yn / 2;
+        var d = triangleSize,
+            d2 = d / 2; // individual triangle size
+
+        var pA = new THREE.Vector3();
+        var pB = new THREE.Vector3();
+        var pC = new THREE.Vector3();
+
+        var cb = new THREE.Vector3();
+        var ab = new THREE.Vector3();
+
+        for (var i = 0; i < positions.length; i += 9) {
+
+            // positions
+            posX[i] = Math.random();
+            posY[i] = Math.random();
+            posZ[i] = Math.random();
+
+            var x = posX[i] * xn - xn2;
+            var y = posY[i] * yn - yn2;
+            var z = posZ[i] * xn - xn2;
+
+            var ax = x + Math.random() * d - d2;
+            var ay = y + Math.random() * d - d2;
+            var az = z + Math.random() * d - d2;
+
+            var bx = x + Math.random() * d - d2;
+            var by = y + Math.random() * d - d2;
+            var bz = z + Math.random() * d - d2;
+
+            var cx = x + Math.random() * d - d2;
+            var cy = y + Math.random() * d - d2;
+            var cz = z + Math.random() * d - d2;
+
+            positions[i] = ax;
+            positions[i + 1] = ay;
+            positions[i + 2] = az;
+
+            positions[i + 3] = bx;
+            positions[i + 4] = by;
+            positions[i + 5] = bz;
+
+            positions[i + 6] = cx;
+            positions[i + 7] = cy;
+            positions[i + 8] = cz;
+
+            // flat face normals
+
+            pA.set(ax, ay, az);
+            pB.set(bx, by, bz);
+            pC.set(cx, cy, cz);
+
+            cb.subVectors(pC, pB);
+            ab.subVectors(pA, pB);
+            cb.cross(ab);
+
+            cb.normalize();
+
+            var nx = cb.x;
+            var ny = cb.y;
+            var nz = cb.z;
+            // 32767  3000
+            normals[i] = nx * 3000;
+            normals[i + 1] = ny * 3000;
+            normals[i + 2] = nz * 3000;
+
+            normals[i + 3] = nx * 3000;
+            normals[i + 4] = ny * 3000;
+            normals[i + 5] = nz * 3000;
+
+            normals[i + 6] = nx * 3000;
+            normals[i + 7] = ny * 3000;
+            normals[i + 8] = nz * 3000;
+
+            // colors
+
+            var vx = (x / xn) + 0.5;
+            var vy = (y / yn) + 0.5;
+            var vz = (z / xn) + 0.5;
+
+            color.setRGB(vx, vy, vz);
+
+            colors[i] = color.r * 255;
+            colors[i + 1] = color.g * 255;
+            colors[i + 2] = color.b * 255;
+
+            colors[i + 3] = color.r * 255;
+            colors[i + 4] = color.g * 255;
+            colors[i + 5] = color.b * 255;
+
+            colors[i + 6] = color.r * 255;
+            colors[i + 7] = color.g * 255;
+            colors[i + 8] = color.b * 255;
+
+        }
+
+        geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+        geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.addAttribute('normal', new THREE.BufferAttribute(normals, 3, true));
+        geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3, true));
+
+        geometry.computeBoundingSphere();
+
+        var material = new THREE.MeshPhongMaterial({
+            color: 0xaaaaaa,
+            specular: 0xffffff,
+            shininess: 250,
+            side: THREE.DoubleSide,
+            vertexColors: THREE.VertexColors
+        });
+
+        mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+
+        //
+
+        renderer = new THREE.WebGLRenderer({
+            antialias: false
+        });
+        renderer.setClearColor(scene.fog.color);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        renderer.gammaInput = true;
+        renderer.gammaOutput = true;
+
+        container.appendChild(renderer.domElement);
+
+
+
+        //
+
+        window.addEventListener('resize', onWindowResize, false);
+
+    }
+
+    function onWindowResize() {
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+    }
+
+    //
+
+    function animate() {
+
+        requestAnimationFrame(animate);
+
+        render();
+
+
+    }
+
+    function render() {
+        var c1 = document.getElementById("postImpressionism-canvas1");
+        var ctx1 = c1.getContext("2d");
+        var canvasWidth = c1.width;
+        var canvasHeight = c1.height;
+        ctx1.drawImage(video, 0, 0, WIDTH, HEIGHT);
+        var frame = ctx1.getImageData(0, 0, WIDTH, HEIGHT);
+        for (var i = 0; i < positions.length; i += 9) {
+
+            var preX = posX[i];
+            var preY = posY[i];
+
+            var x = Math.floor(preX * frame.width);
+            var y = Math.floor(frame.height - preY * frame.height);
+
+            var pixIndex = y * frame.width + x;
+            var colR = frame.data[pixIndex * 4 + 0] / 255 ;
+            var colG = frame.data[pixIndex * 4 + 1] / 255 ;
+            var colB = frame.data[pixIndex * 4 + 2] / 255 ;
+            color.setRGB(colR, colG, colB);
+            colors[i] = color.r * 255;
+            colors[i + 1] = color.g * 255;
+            colors[i + 2] = color.b * 255;
+
+            colors[i + 3] = color.r * 255;
+            colors[i + 4] = color.g * 255;
+            colors[i + 5] = color.b * 255;
+
+            colors[i + 6] = color.r * 255;
+            colors[i + 7] = color.g * 255;
+            colors[i + 8] = color.b * 255;
+        }
+
+        geometry.attributes.color.needsUpdate = true;
+        cameraSpeed += 0.02;
+        frameCount += 1;
+        meshRotationSpeed += 0.02;
+
+        var time = Date.now() * 0.001;
+        if (frameCount < 190) {
+            // mesh.rotation.y = time * 0.15;
+            camera.position.z = 1200 * Math.sin(cameraSpeed) + 1000;
+        } else {
+            // mesh.rotation.x = time * 0.35;
+            // mesh.rotation.y = time * 0.15;
+            mesh.rotation.x = 0.7 * Math.sin(meshRotationSpeed) - 0.3;
+            mesh.rotation.y = 0.7 * Math.sin(meshRotationSpeed);
+            camera.position.z = 1200 * Math.sin(cameraSpeed) + 1000;
+        }
+
+        renderer.render(scene, camera);
+
+    }
+    </script>
+</body>
+
+</html>
